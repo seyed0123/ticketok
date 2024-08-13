@@ -9,7 +9,7 @@ $params = array_merge(
 return [
     'id' => 'app-frontend',
     'basePath' => dirname(__DIR__),
-    'bootstrap' => ['log'],
+    'bootstrap' => ['debug'],
     'controllerNamespace' => 'frontend\controllers',
     'components' => [
         'request' => [
@@ -29,7 +29,8 @@ return [
             'targets' => [
                 [
                     'class' => \yii\log\FileTarget::class,
-                    'levels' => ['error', 'warning'],
+                    'levels' => ['error', 'warning'], // Add 'debug' level here
+                    'categories' => ['application'], // Ensure that 'application' category is included
                 ],
             ],
         ],
@@ -41,6 +42,12 @@ return [
             'showScriptName' => false,
             'rules' => [
             ],
+        ],
+    ],
+    'modules' => [
+        'debug' => [
+            'class' => 'yii\debug\Module',
+//            'allowedIPs' => ['127.0.0.1', '::1', 'YOUR_IP_ADDRESS'], // Add your IP address here
         ],
     ],
     'params' => $params,

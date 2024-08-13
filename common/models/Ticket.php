@@ -2,6 +2,7 @@
 
 namespace common\models;
 
+use common\models\query\UserTicketQuery;
 use Yii;
 
 /**
@@ -94,24 +95,62 @@ class Ticket extends \yii\db\ActiveRecord
             $this->author_id = Yii::$app->user->id;
             $this->created_at = time();
             $this->updated_at = time();
-            $usernames = $this->usernames;
+        }else{
+            $this->updated_at = time();
+        }
+
+        $res = parent::save($runValidation, $attributeNames);
+
+        $usernames = $this->usernames;
+        if($this->isNewRecord){
             if (!empty($usernames)) {
                 $usernameArray = array_map('trim', explode(',', $usernames));
                 foreach ($usernameArray as $username) {
+
                     $user = User::findOne(['username' => $username]);
                     if ($user) {
                         $userTicket = new UserTicket();
                         $userTicket->ticket_id = $this->id;
                         $userTicket->user_id = $user->id;
                         $userTicket->status = UserTicket::STATUS_UNSEEN;
-                        $userTicket->update_at = time();
-                        $userTicket->save();
+                        if (!$userTicket->save()) {
+                            Yii::error($userTicket->errors, 'application');
+                        }
                     }
                 }
             }
         }else{
-            $this->updated_at = time();
+            if (!empty($usernames)) {
+                $usernameArray = array_map('trim', explode(',', $usernames));
+                $savedUserTickets = UserTicket::findAll(['ticket_id' =>$this->id ]);
+
+                $savedUsernames = [];
+
+                foreach ($savedUserTickets as $userTicket) {
+                    $user = $userTicket->user;
+                    if ($user) {
+                        $savedUsernames[$user->username] = $userTicket;
+                    }
+                }
+
+                foreach ($usernameArray as $username) {
+                    $user = User::findOne(['username' => $username]);
+                    if ($user && !isset($savedUsernames[$username])) {
+                        $userTicket = new UserTicket();
+                        $userTicket->ticket_id = $this->id;
+                        $userTicket->user_id = $user->id;
+                        $userTicket->status = UserTicket::STATUS_UNSEEN;
+                        $userTicket->save();
+                    }
+                }
+
+                foreach ($savedUsernames as $username => $userTicket) {
+                    if (!in_array($username, $usernameArray, true)) {
+                        $userTicket->delete();
+                    }
+                }
+            }
         }
-        return parent::save($runValidation, $attributeNames);
+        return $res;
     }
 }

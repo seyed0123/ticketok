@@ -5,6 +5,7 @@ namespace frontend\controllers;
 use common\models\Ticket;
 use common\models\User;
 use common\models\UserTicket;
+use mysql_xdevapi\Warning;
 use Yii;
 use yii\data\ActiveDataProvider;
 use yii\web\Controller;
@@ -101,6 +102,16 @@ class TicketController extends Controller
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
+
+        $savedUserTickets = UserTicket::findAll(['ticket_id' =>$model->id]);
+        $savedUsernames = [];
+        foreach ($savedUserTickets as $userTicket) {
+            $user = $userTicket->user;
+            if ($user) {
+                $savedUsernames[] = $user->username;
+            }
+        }
+        $model->usernames = implode(', ', $savedUsernames);
 
         if ($this->request->isPost && $model->load($this->request->post()) && $model->save()) {
             return $this->redirect(['view', 'id' => $model->id]);

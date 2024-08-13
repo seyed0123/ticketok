@@ -86,4 +86,10 @@ class UserTicket extends \yii\db\ActiveRecord
     {
         return new \common\models\query\UserTicketQuery(get_called_class());
     }
+
+    public function save($runValidation = true, $attributeNames = null)
+    {
+        $this->update_at = time();
+        return parent::save($runValidation, $attributeNames);
+    }
 }
