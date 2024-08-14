@@ -11,6 +11,7 @@ return [
     'basePath' => dirname(__DIR__),
     'bootstrap' => ['debug'],
     'controllerNamespace' => 'frontend\controllers',
+    'name' => 'Ticketok',
     'components' => [
         'request' => [
             'csrfParam' => '_csrf-frontend',

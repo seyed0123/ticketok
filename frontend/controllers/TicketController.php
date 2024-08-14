@@ -123,8 +123,22 @@ class TicketController extends Controller
                 return $this->actionIndex();
             }
         }
+        $ticketStatuses = UserTicket::find()
+            ->select(['user_id', 'status'])
+            ->where(['ticket_id' => $id])
+            ->indexBy('user_id')
+            ->asArray()
+            ->all();
+
+
+        foreach ($ticketStatuses as $ticketStatus){
+            $ticketStatuses[$ticketStatus['user_id']] = ['username'=>User::find()->andWhere(['id' => $ticketStatus['user_id']])->one()->username,'status'=>UserTicket::getStatusLabels()[$ticketStatus['status']]];
+        }
+
+        Yii::warning($model->body, category: 'application');
         return $this->render('view', [
             'model' => $model,
+            'ticketStatuses' => $ticketStatuses,
         ]);
     }
 

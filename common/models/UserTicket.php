@@ -22,6 +22,13 @@ class UserTicket extends \yii\db\ActiveRecord
     const STATUS_SEEN = 1;
     const STATUS_UNSEEN = 0;
     const STATUS_ANSWER = 2;
+
+    public static function getStatusLabels(){
+        return [
+            'UNSeen',
+            'Seen',
+        ];
+    }
     /**
      * {@inheritdoc}
      */

@@ -9,7 +9,7 @@ use yii\grid\GridView;
 
 /** @var yii\web\View $this */
 /** @var yii\data\ActiveDataProvider $dataProvider */
-/** @var array<int, int> $ticketStatuses An associative array mapping ticket IDs to their statuses */
+/** @var array<int, int> $ticketStatuses */
 
 $this->title = 'Inbox Tickets';
 $this->params['breadcrumbs'][] = $this->title;
@@ -41,7 +41,6 @@ $this->params['breadcrumbs'][] = $this->title;
             'created_at:datetime',
             'updated_at:datetime',
 
-            // Custom column for the View button
             [
                 'attribute' => 'View',
                 'content' => function($model) {

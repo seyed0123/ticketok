@@ -5,6 +5,7 @@ use yii\widgets\DetailView;
 
 /** @var yii\web\View $this */
 /** @var common\models\Ticket $model */
+/** @var array<string, int> $ticketStatuses */
 
 $this->title = $model->title;
 $this->params['breadcrumbs'][] = ['label' => 'Tickets', 'url' => ['sent']];
@@ -26,18 +27,52 @@ $this->params['breadcrumbs'][] = $this->title;
             ]) ?>
         </p>
     <?php endif; ?>
+        <div class="container">
+            <div class="row alert alert-dark ">
+                <h1 class='text-center ' style="font-size: 36px; font-weight: bold; margin-bottom: 20px;">
+                    <?= Html::encode($model->title) ?>
+                </h1>
+                <div class="row p-3">
+                    <div class="text-left alert alert-light " style="margin-bottom: 20px;">
+                        <?= nl2br(Html::encode($model->body)) ?>
+                    </div>
+                </div>
+            </div>
 
-    <?= DetailView::widget([
-        'model' => $model,
-        'attributes' => [
-            'id',
-            'author_id',
-            'title',
-            'body:ntext',
-            'created_at',
-            'updated_at',
-            'status',
-        ],
-    ]) ?>
+            <div class="card my-2 fw-light" style="width: 18rem;">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item text-muted">Create At :  <?= Yii::$app->formatter->asDatetime($model->created_at, 'php:F j, Y, g:i a') ?></li>
+                    <li class="list-group-item text-muted">Update At : <?= Yii::$app->formatter->asDatetime($model->updated_at, 'php:F j, Y, g:i a') ?></li>
+                    <li class="list-group-item text-muted" >Status : <?= $model->getStatusLabels()[$model->status] ?></li>
+                </ul>
+            </div>
 
+            <?php if (Yii::$app->user->id === $model->author_id): ?>
+            <table class="table table-striped table-bordered bg-transparent ">
+                <thead>
+                <tr class="table-primary">
+                    <th>
+                        Username
+                    </th>
+
+                    <th>
+                        Status
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($ticketStatuses as $ticketStatus){
+                    echo "<tr>
+                            <th>
+                                " . htmlspecialchars($ticketStatus['username']) . "
+                            </th>
+                            <th>
+                                " . htmlspecialchars($ticketStatus['status']) . "
+                            </th>
+                        </tr>";
+                }?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 </div>
