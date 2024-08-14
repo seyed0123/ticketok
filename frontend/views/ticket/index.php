@@ -1,6 +1,7 @@
 <?php
 
 use common\models\Ticket;
+use common\models\UserTicket;
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\grid\ActionColumn;
@@ -8,8 +9,9 @@ use yii\grid\GridView;
 
 /** @var yii\web\View $this */
 /** @var yii\data\ActiveDataProvider $dataProvider */
+/** @var array<int, int> $ticketStatuses An associative array mapping ticket IDs to their statuses */
 
-$this->title = 'Tickets';
+$this->title = 'Inbox Tickets';
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="ticket-index">
@@ -23,22 +25,32 @@ $this->params['breadcrumbs'][] = $this->title;
 
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
+        'rowOptions' => function ($model, $key, $index, $grid) use ($ticketStatuses) {
+
+            if (isset($ticketStatuses[$model->id]) && $ticketStatuses[$model->id]['status'] === UserTicket::STATUS_SEEN) {
+                return ['class' => 'table-secondary opacity-25'];
+            } else {
+                return ['class' => 'table-primary'];
+            }
+        },
         'columns' => [
             ['class' => 'yii\grid\SerialColumn'],
 
             'title',
             'body:ntext',
-            'created_at',
-            'updated_at',
-            'status',
+            'created_at:datetime',
+            'updated_at:datetime',
+
+            // Custom column for the View button
             [
-                'class' => ActionColumn::className(),
-                'urlCreator' => function ($action, Ticket $model, $key, $index, $column) {
-                    return Url::toRoute([$action, 'id' => $model->id]);
-                 }
+                'attribute' => 'View',
+                'content' => function($model) {
+                    return Html::a('View', ['view', 'id' => $model->id], ['class' => 'btn btn-primary']);
+                }
             ],
         ],
     ]); ?>
+
 
 
 </div>

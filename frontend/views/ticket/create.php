@@ -6,7 +6,7 @@ use yii\helpers\Html;
 /** @var common\models\Ticket $model */
 
 $this->title = 'Create Ticket';
-$this->params['breadcrumbs'][] = ['label' => 'Tickets', 'url' => ['index']];
+$this->params['breadcrumbs'][] = ['label' => 'Tickets', 'url' => ['sent']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="ticket-create">

@@ -65,6 +65,13 @@ class Ticket extends \yii\db\ActiveRecord
         ];
     }
 
+    public function getStatusLabels(){
+        return [
+            self::STATUS_DRAFT => 'Draft',
+            self::STATUS_SEND => 'Send'
+        ];
+    }
+
     /**
      * Gets query for [[Author]].
      *

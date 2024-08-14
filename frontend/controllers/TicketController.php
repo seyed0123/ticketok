@@ -8,6 +8,7 @@ use common\models\UserTicket;
 use mysql_xdevapi\Warning;
 use Yii;
 use yii\data\ActiveDataProvider;
+use yii\filters\AccessControl;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
@@ -25,6 +26,15 @@ class TicketController extends Controller
         return array_merge(
             parent::behaviors(),
             [
+                'access' => [
+                    'class' => AccessControl::class,
+                    'rules' => [
+                        [
+                            'allow' => true,
+                            'roles' => ['@'],
+                        ],
+                    ],
+                ],
                 'verbs' => [
                     'class' => VerbFilter::className(),
                     'actions' => [
@@ -42,8 +52,12 @@ class TicketController extends Controller
      */
     public function actionIndex()
     {
+        $userTickets = $userTickets = UserTicket::find()
+            ->select('ticket_id')
+            ->andWhere(['user_id'=> Yii::$app->user->id])
+            ->column();
         $dataProvider = new ActiveDataProvider([
-            'query' => Ticket::find(),
+            'query' => Ticket::find()->andWhere(['id' => $userTickets])->andWhere(['status' =>Ticket::STATUS_SEND]),
             /*
             'pagination' => [
                 'pageSize' => 50
@@ -56,7 +70,35 @@ class TicketController extends Controller
             */
         ]);
 
+        $ticketStatuses = UserTicket::find()
+            ->select(['ticket_id', 'status'])
+            ->where(['user_id' => Yii::$app->user->id])
+            ->indexBy('ticket_id')
+            ->asArray()
+            ->all();
+
         return $this->render('index', [
+            'dataProvider' => $dataProvider,
+            'ticketStatuses' => $ticketStatuses
+        ]);
+    }
+
+    public function actionSent(){
+        $dataProvider = new ActiveDataProvider([
+            'query' => Ticket::find()->andWhere(['author_id' => Yii::$app->user->id]) ,
+            /*
+            'pagination' => [
+                'pageSize' => 50
+            ],
+            'sort' => [
+                'defaultOrder' => [
+                    'id' => SORT_DESC,
+                ]
+            ],
+            */
+        ]);
+
+        return $this->render('sent', [
             'dataProvider' => $dataProvider,
         ]);
     }
@@ -69,8 +111,20 @@ class TicketController extends Controller
      */
     public function actionView($id)
     {
+        $model = $this->findModel($id);
+        if($model->author_id !== Yii::$app->user->id){
+            $userTicket = UserTicket::findone([ 'user_id'=>Yii::$app->user->id,'ticket_id'=>$model->id ]);
+            if($userTicket){
+                $userTicket->status = UserTicket::STATUS_SEEN;
+                $userTicket->save();
+
+
+            }else{
+                return $this->actionIndex();
+            }
+        }
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $model,
         ]);
     }
 
