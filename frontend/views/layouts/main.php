@@ -36,11 +36,13 @@ AppAsset::register($this);
     ]);
     $menuItems = [
         ['label' => 'Home', 'url' => ['/site/index']],
-        ['label' => 'About', 'url' => ['/site/about']],
         ['label' => 'Contact', 'url' => ['/site/contact']],
     ];
     if (Yii::$app->user->isGuest) {
         $menuItems[] = ['label' => 'Signup', 'url' => ['/site/signup']];
+    }else{
+        $menuItems[] = ['label' => 'Inbox', 'url' => ['/ticket/index']];
+        $menuItems[] = ['label' => 'Sent', 'url' => ['/ticket/sent']];
     }
 
     echo Nav::widget([
