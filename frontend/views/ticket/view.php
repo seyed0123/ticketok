@@ -6,9 +6,17 @@ use yii\widgets\DetailView;
 /** @var yii\web\View $this */
 /** @var common\models\Ticket $model */
 /** @var array<string, int> $ticketStatuses */
+/** @var boolean $back */
 
+$urlPath = [];
+if($back){
+    $urlPath = ['label' => 'Tickets', 'url' => ['sent']];
+}else{
+    $urlPath = ['label' => 'Inbox', 'url' => ['index' ]];
+}
 $this->title = $model->title;
-$this->params['breadcrumbs'][] = ['label' => 'Tickets', 'url' => ['sent']];
+Yii::warning($urlPath,'application');
+$this->params['breadcrumbs'][] = $urlPath;
 $this->params['breadcrumbs'][] = $this->title;
 \yii\web\YiiAsset::register($this);
 ?>

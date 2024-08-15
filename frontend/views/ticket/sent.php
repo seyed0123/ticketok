@@ -30,9 +30,10 @@ $this->params['breadcrumbs'][] = $this->title;
             'updated_at:datetime',
             [
                 'attribute' => 'status',
-                'content' =>function($model){
-                    return $model->getStatusLabels()[$model->status];
-                }
+                'content' => function($model) {
+                    $statusLabel = $model->getStatusLabels()[$model->status];
+                    return "<p class='" . ($model->status ? "text-success" : "text-secondary") . "'>" . htmlspecialchars($statusLabel) . "</p>";
+                },
             ],
             [
                 'class' => ActionColumn::className(),

@@ -135,10 +135,11 @@ class TicketController extends Controller
             $ticketStatuses[$ticketStatus['user_id']] = ['username'=>User::find()->andWhere(['id' => $ticketStatus['user_id']])->one()->username,'status'=>UserTicket::getStatusLabels()[$ticketStatus['status']]];
         }
 
-        Yii::warning($model->body, category: 'application');
+
         return $this->render('view', [
             'model' => $model,
             'ticketStatuses' => $ticketStatuses,
+            'back' => $model->author_id === Yii::$app->user->id
         ]);
     }
 
