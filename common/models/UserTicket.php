@@ -99,4 +99,54 @@ class UserTicket extends \yii\db\ActiveRecord
         $this->update_at = time();
         return parent::save($runValidation, $attributeNames);
     }
+
+    public static function handelSave($isNewRecord,$usernames,$ticket_id){
+        if($isNewRecord){
+            if (!empty($usernames)) {
+                $usernameArray = array_map('trim', explode(',', $usernames));
+                foreach ($usernameArray as $username) {
+
+                    $user = User::findOne(['username' => $username]);
+                    if ($user) {
+                        $userTicket = new UserTicket();
+                        $userTicket->ticket_id = $ticket_id;
+                        $userTicket->user_id = $user->id;
+                        $userTicket->status = UserTicket::STATUS_UNSEEN;
+                        if (!$userTicket->save()) {
+                            Yii::error($userTicket->errors, 'application');
+                        }
+                    }
+                }
+            }
+        }else if (!empty($usernames)) {
+            $usernameArray = array_map('trim', explode(',', $usernames));
+            $savedUserTickets = UserTicket::findAll(['ticket_id' =>$ticket_id ]);
+
+            $savedUsernames = [];
+
+            foreach ($savedUserTickets as $userTicket) {
+                $user = $userTicket->user;
+                if ($user) {
+                    $savedUsernames[$user->username] = $userTicket;
+                }
+            }
+
+            foreach ($usernameArray as $username) {
+                $user = User::findOne(['username' => $username]);
+                if ($user && !isset($savedUsernames[$username])) {
+                    $userTicket = new UserTicket();
+                    $userTicket->ticket_id = $ticket_id;
+                    $userTicket->user_id = $user->id;
+                    $userTicket->status = UserTicket::STATUS_UNSEEN;
+                    $userTicket->save();
+                }
+            }
+
+            foreach ($savedUsernames as $username => $userTicket) {
+                if (!in_array($username, $usernameArray, true)) {
+                    $userTicket->delete();
+                }
+            }
+        }
+    }
 }

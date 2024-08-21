@@ -5,7 +5,7 @@ use yii\widgets\DetailView;
 
 /** @var yii\web\View $this */
 /** @var common\models\Ticket $model */
-/** @var array<string, int> $ticketStatuses */
+/** @var array<string, int, string> $ticketStatuses */
 /** @var boolean $back */
 
 $urlPath = [];
@@ -15,7 +15,6 @@ if($back){
     $urlPath = ['label' => 'Inbox', 'url' => ['index' ]];
 }
 $this->title = $model->title;
-Yii::warning($urlPath,'application');
 $this->params['breadcrumbs'][] = $urlPath;
 $this->params['breadcrumbs'][] = $this->title;
 \yii\web\YiiAsset::register($this);
@@ -66,6 +65,9 @@ $this->params['breadcrumbs'][] = $this->title;
                     <th>
                         Status
                     </th>
+                    <th>
+                        Updated At
+                    </th>
                 </tr>
                 </thead>
                 <tbody>
@@ -76,6 +78,9 @@ $this->params['breadcrumbs'][] = $this->title;
                             </th>
                             <th>
                                 " . htmlspecialchars($ticketStatus['status']) . "
+                            </th>
+                            <th>
+                                ".Yii::$app->formatter->asDatetime($ticketStatus['update_at'], 'php:F j, Y, g:i a')."
                             </th>
                         </tr>";
                 }?>

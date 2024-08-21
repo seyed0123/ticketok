@@ -3,12 +3,15 @@
 namespace frontend\controllers;
 
 use common\models\Ticket;
+use common\models\TicketSearch;
 use common\models\User;
 use common\models\UserTicket;
-use mysql_xdevapi\Warning;
 use Yii;
 use yii\data\ActiveDataProvider;
+use yii\db\Exception;
+use yii\db\Query;
 use yii\filters\AccessControl;
+use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
@@ -52,34 +55,14 @@ class TicketController extends Controller
      */
     public function actionIndex()
     {
-        $userTickets = $userTickets = UserTicket::find()
-            ->select('ticket_id')
-            ->andWhere(['user_id'=> Yii::$app->user->id])
-            ->column();
-        $dataProvider = new ActiveDataProvider([
-            'query' => Ticket::find()->andWhere(['id' => $userTickets])->andWhere(['status' =>Ticket::STATUS_SEND]),
-            /*
-            'pagination' => [
-                'pageSize' => 50
-            ],
-            'sort' => [
-                'defaultOrder' => [
-                    'id' => SORT_DESC,
-                ]
-            ],
-            */
-        ]);
 
-        $ticketStatuses = UserTicket::find()
-            ->select(['ticket_id', 'status'])
-            ->where(['user_id' => Yii::$app->user->id])
-            ->indexBy('ticket_id')
-            ->asArray()
-            ->all();
+
+        $searchModel = new TicketSearch();
+        $dataProvider2 = $searchModel->search($this->request->queryParams);
 
         return $this->render('index', [
-            'dataProvider' => $dataProvider,
-            'ticketStatuses' => $ticketStatuses
+            'dataProvider' => $dataProvider2,
+            'searchModel' => $searchModel,
         ]);
     }
 
@@ -124,7 +107,7 @@ class TicketController extends Controller
             }
         }
         $ticketStatuses = UserTicket::find()
-            ->select(['user_id', 'status'])
+            ->select(['user_id', 'status','update_at'])
             ->where(['ticket_id' => $id])
             ->indexBy('user_id')
             ->asArray()
@@ -132,7 +115,7 @@ class TicketController extends Controller
 
 
         foreach ($ticketStatuses as $ticketStatus){
-            $ticketStatuses[$ticketStatus['user_id']] = ['username'=>User::find()->andWhere(['id' => $ticketStatus['user_id']])->one()->username,'status'=>UserTicket::getStatusLabels()[$ticketStatus['status']]];
+            $ticketStatuses[$ticketStatus['user_id']] = ['username'=>User::find()->andWhere(['id' => $ticketStatus['user_id']])->one()->username,'status'=>UserTicket::getStatusLabels()[$ticketStatus['status']],'update_at'=>$ticketStatus['update_at']];
         }
 
 
@@ -152,8 +135,24 @@ class TicketController extends Controller
     {
         $model = new Ticket();
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            $transaction = Yii::$app->db->beginTransaction();
+            try {
+                $flag = $model->save(false);
+                $flag = $flag && $model->handelSave(true) ;
+                if ( $flag) {
+                    $transaction->commit();
+                    return $this->redirect(['view', 'id' => $model->id]);
+                }else{
+                    $transaction->rollBack();
+                }
+            } catch (Exception $e) {
+                Yii::error($e->getMessage());
+                $transaction->rollBack();
+            }
+        }else{
+            Yii::error($model->getErrors(), 'application');
+            Yii::warning($model->usernames,'application');
         }
 
         return $this->render('create', [
@@ -172,18 +171,29 @@ class TicketController extends Controller
     {
         $model = $this->findModel($id);
 
-        $savedUserTickets = UserTicket::findAll(['ticket_id' =>$model->id]);
-        $savedUsernames = [];
+        $savedUserTickets = $model->getUserTickets()->all();
+        $savedIds = [];
         foreach ($savedUserTickets as $userTicket) {
-            $user = $userTicket->user;
-            if ($user) {
-                $savedUsernames[] = $user->username;
-            }
+            $savedIds[] = (string)$userTicket->user->id;
         }
-        $model->usernames = implode(', ', $savedUsernames);
+        $model->usernames = $savedIds;
+        if ($this->request->isPost && $model->load($this->request->post()) && $model->validate()) {
+            $transaction = Yii::$app->db->beginTransaction();
+            try {
+                $flag = $model->save(false);
+                $flag = $flag && $model->handelSave() ;
+                if ( $flag) {
+                    $transaction->commit();
+                    return $this->redirect(['view', 'id' => $model->id]);
+                }else{
+                    $transaction->rollBack();
 
-        if ($this->request->isPost && $model->load($this->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+                }
+            } catch (Exception $e) {
+                Yii::error($e->getMessage());
+                $transaction->rollBack();
+            }
+        }else{
         }
 
         return $this->render('update', [
@@ -219,5 +229,31 @@ class TicketController extends Controller
         }
 
         throw new NotFoundHttpException('The requested page does not exist.');
+    }
+
+    /**
+     * @param $q
+     * @param $id
+     * @return \yii\web\Response
+     */
+    public function actionUserList($q = null, $id = null) {
+
+        if (!is_null($q)) {
+            $data = User::find()
+                ->where(['like', 'username', $q])
+                ->limit(20)->all();
+            foreach ($data as $index=>$item){
+                $out['results'][$index]=[
+                    'id'=>$item->id,
+                    'text'=>$item->username
+                ];
+            }
+
+
+        }
+        elseif ($id > 0) {
+            $out['results'] = ['id' => $id, 'text' => User::findone($id)->username];
+        }
+        return $this->asJson($out);
     }
 }

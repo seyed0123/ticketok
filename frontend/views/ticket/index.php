@@ -1,5 +1,6 @@
 <?php
 
+use yii\grid\SerialColumn;
 use common\models\Ticket;
 use common\models\UserTicket;
 use yii\helpers\Html;
@@ -9,7 +10,7 @@ use yii\grid\GridView;
 
 /** @var yii\web\View $this */
 /** @var yii\data\ActiveDataProvider $dataProvider */
-/** @var array<int, int> $ticketStatuses */
+/** @var common\models\TicketSearch $searchModel */
 
 $this->title = 'Inbox Tickets';
 $this->params['breadcrumbs'][] = $this->title;
@@ -22,24 +23,25 @@ $this->params['breadcrumbs'][] = $this->title;
         <?= Html::a('Create Ticket', ['create'], ['class' => 'btn btn-success']) ?>
     </p>
 
+    <?php  echo $this->render('_search', ['model' => $searchModel]); ?>
 
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
-        'rowOptions' => function ($model, $key, $index, $grid) use ($ticketStatuses) {
-
-            if (isset($ticketStatuses[$model->id]) && $ticketStatuses[$model->id]['status'] === UserTicket::STATUS_SEEN) {
+        'filterModel' => $searchModel,
+        'rowOptions' => function (UserTicket $model, $key, $index, $grid) {
+            if ($model->status === UserTicket::STATUS_SEEN) {
                 return ['class' => 'table-secondary opacity-25'];
             } else {
                 return ['class' => 'table-primary'];
             }
         },
         'columns' => [
-            ['class' => 'yii\grid\SerialColumn'],
+            ['class' => SerialColumn::class],
 
-            'title',
-            'body:ntext',
-            'created_at:datetime',
-            'updated_at:datetime',
+            'ticket.title',
+            'ticket.body:ntext',
+            'ticket.created_at:datetime',
+            'ticket.updated_at:datetime',
 
             [
                 'attribute' => 'View',

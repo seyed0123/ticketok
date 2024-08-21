@@ -4,6 +4,7 @@ namespace common\models;
 
 use common\models\query\UserTicketQuery;
 use Yii;
+use yii\behaviors\TimestampBehavior;
 
 /**
  * This is the model class for table "{{%ticket}}".
@@ -17,6 +18,8 @@ use Yii;
  * @property int|null $status
  *
  * @property User $author
+ * @property UserTicket[] $userTickets
+ * @property UserTicket[] $myUserTickets
  */
 class Ticket extends \yii\db\ActiveRecord
 {
@@ -36,14 +39,24 @@ class Ticket extends \yii\db\ActiveRecord
     /**
      * {@inheritdoc}
      */
+    public function behaviors()
+    {
+        return [
+            TimestampBehavior::class,
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function rules()
     {
         return [
-            [['id', 'author_id', 'title'], 'required'],
+            [['id', 'author_id', 'title', 'usernames'], 'required'],
             [['author_id', 'created_at', 'updated_at', 'status'], 'integer'],
             [['body'], 'string'],
             [['id'], 'string', 'max' => 16],
-            [['title','usernames'], 'string', 'max' => 255],
+            [['title'], 'string', 'max' => 255],
             [['id'], 'unique'],
             [['author_id'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['author_id' => 'id']],
         ];
@@ -83,6 +96,21 @@ class Ticket extends \yii\db\ActiveRecord
     }
 
     /**
+     * Gets query for [[UserTickets]].
+     *
+     * @return \yii\db\ActiveQuery|\common\models\query\UserTicketQuery
+     */
+    public function getUserTickets()
+    {
+        return $this->hasMany(UserTicket::class, ['ticket_id' => 'id']);
+    }
+
+    public function getMyUserTickets()
+    {
+        return $this->getUserTickets()->andWhere([UserTicket::tableName() . '.user_id' => Yii::$app->user->id]);
+    }
+
+    /**
      * {@inheritdoc}
      * @return \common\models\query\TicketQuery the active query used by this AR class.
      */
@@ -91,30 +119,18 @@ class Ticket extends \yii\db\ActiveRecord
         return new \common\models\query\TicketQuery(get_called_class());
     }
 
-    /**
-     * @throws \yii\db\Exception
-     * @throws \yii\base\Exception
-     */
-    public function save($runValidation = true, $attributeNames = null)
-    {
-        if($this->isNewRecord){
-            $this->id = Yii::$app->security->generateRandomString(16);
-            $this->author_id = Yii::$app->user->id;
-            $this->created_at = time();
-            $this->updated_at = time();
-        }else{
-            $this->updated_at = time();
+
+    public function handelSave($isSaveNow=False):bool{
+        $flag = true;
+        if(empty($this->usernames))
+        {
+            $this->addError($this->usernames, 'Usernames cannot be empty.');
+            return false;
         }
-
-        $res = parent::save($runValidation, $attributeNames);
-
-        $usernames = $this->usernames;
-        if($this->isNewRecord){
-            if (!empty($usernames)) {
-                $usernameArray = array_map('trim', explode(',', $usernames));
-                foreach ($usernameArray as $username) {
-
-                    $user = User::findOne(['username' => $username]);
+        if($isSaveNow){
+            if (!empty($this->usernames)) {
+                foreach ($this->usernames as $user_id) {
+                    $user = User::findIdentity($user_id);
                     if ($user) {
                         $userTicket = new UserTicket();
                         $userTicket->ticket_id = $this->id;
@@ -122,42 +138,53 @@ class Ticket extends \yii\db\ActiveRecord
                         $userTicket->status = UserTicket::STATUS_UNSEEN;
                         if (!$userTicket->save()) {
                             Yii::error($userTicket->errors, 'application');
+                            $flag = false;
                         }
                     }
                 }
             }
-        }else{
-            if (!empty($usernames)) {
-                $usernameArray = array_map('trim', explode(',', $usernames));
-                $savedUserTickets = UserTicket::findAll(['ticket_id' =>$this->id ]);
+        }else if (!empty($this->usernames)) {
 
-                $savedUsernames = [];
+            $savedUserTickets = $this->getUserTickets()->all();
+            $savedIds = [];
+            foreach ($savedUserTickets as $userTicket) {
+                $savedIds[] = (string)$userTicket->user->id;
+            }
 
-                foreach ($savedUserTickets as $userTicket) {
-                    $user = $userTicket->user;
-                    if ($user) {
-                        $savedUsernames[$user->username] = $userTicket;
+
+            foreach ($this->usernames as $userId) {
+                $user = User::findIdentity($userId);
+                if ($user && !in_array($userId, $savedIds, true)) {
+                    $userTicket = new UserTicket();
+                    $userTicket->ticket_id = $this->id;
+                    $userTicket->user_id = $user->id;
+                    $userTicket->status = UserTicket::STATUS_UNSEEN;
+                    if (!$userTicket->save()) {
+                        Yii::error($userTicket->errors, 'application');
+                        $flag = false;
                     }
                 }
+            }
 
-                foreach ($usernameArray as $username) {
-                    $user = User::findOne(['username' => $username]);
-                    if ($user && !isset($savedUsernames[$username])) {
-                        $userTicket = new UserTicket();
-                        $userTicket->ticket_id = $this->id;
-                        $userTicket->user_id = $user->id;
-                        $userTicket->status = UserTicket::STATUS_UNSEEN;
-                        $userTicket->save();
-                    }
-                }
-
-                foreach ($savedUsernames as $username => $userTicket) {
-                    if (!in_array($username, $usernameArray, true)) {
-                        $userTicket->delete();
+            foreach ($savedIds as $userId) {
+                if (!in_array($userId, $this->usernames, true)) {
+                    $userTicket = UserTicket::findone(['user_id'=>$userId,'ticket_id'=>$this->id]);
+                    if (!$userTicket->delete()) {
+                        Yii::error($userTicket->errors, 'application');
+                        $flag = false;
                     }
                 }
             }
         }
-        return $res;
+        return $flag;
+    }
+
+    public function beforeValidate()
+    {
+        if($this->isNewRecord){
+            $this->id = Yii::$app->security->generateRandomString(16);
+            $this->author_id = Yii::$app->user->id;
+        }
+        return parent::beforeValidate();
     }
 }
